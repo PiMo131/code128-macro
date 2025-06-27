@@ -3,37 +3,53 @@ Sub GenereerBarcodeInWord()
     tekst = InputBox("Voer de tekst in voor de Code128 barcode:", "Code128 Generator", "ABC123")
     If tekst = "" Then Exit Sub
 
-    ' Wis eerder gegenereerde barcode (optioneel)
+    ' Verwijder eerder gemaakte barcode
     Dim sh As Shape
     For Each sh In ActiveDocument.Shapes
-        If Left(sh.Name, 8) = "Barcode_" Then sh.Delete
+        If Left(sh.Name, 8) = "Barcode_" Or sh.Name = "BarcodeGroep" Then sh.Delete
     Next sh
 
     ' Genereer binair patroon
     Dim binString As String
     binString = Code128B_Binarize(tekst)
 
-    ' Teken barcode in Word
+    ' Barcode tekenen
     Dim i As Long
     Dim xPos As Single: xPos = 50
     Dim yPos As Single: yPos = 100
     Dim hoogte As Single: hoogte = 14
     Dim breedte As Single: breedte = 1
 
+    Dim shapeNames() As Variant
+    Dim shapeCount As Long: shapeCount = 0
+
     For i = 1 To Len(binString)
         If Mid(binString, i, 1) = "1" Then
-            Dim bar As Shape
-            Set bar = ActiveDocument.Shapes.AddShape(Type:=msoShapeRectangle, _
+            shapeCount = shapeCount + 1
+            ReDim Preserve shapeNames(1 To shapeCount)
+            Dim shapeName As String
+            shapeName = "Barcode_" & i
+
+            With ActiveDocument.Shapes.AddShape(Type:=msoShapeRectangle, _
                 Left:=xPos, Top:=yPos, Width:=breedte, Height:=hoogte)
-            With bar
                 .Fill.ForeColor.RGB = RGB(0, 0, 0)
                 .Line.Visible = msoFalse
-                .Name = "Barcode_" & i
+                .Name = shapeName
             End With
+
+            shapeNames(shapeCount) = shapeName
         End If
         xPos = xPos + breedte
     Next i
+
+    ' Groepeer alle gegenereerde shapes
+    If shapeCount > 0 Then
+        Dim grouped As Shape
+        Set grouped = ActiveDocument.Shapes.Range(shapeNames).Group
+        grouped.Name = "BarcodeGroep"
+    End If
 End Sub
+
 
 
 Function Code128B_Binarize(ByVal tekst As String) As String
@@ -96,5 +112,6 @@ Function Code128_Patronen(index As Integer) As String
         "11010011100", "1100011101011")
     Code128_Patronen = patronen(index)
 End Function
+
 
 
