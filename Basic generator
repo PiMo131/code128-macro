@@ -1,0 +1,100 @@
+Sub GenereerBarcodeInWord()
+    Dim tekst As String
+    tekst = InputBox("Voer de tekst in voor de Code128 barcode:", "Code128 Generator", "ABC123")
+    If tekst = "" Then Exit Sub
+
+    ' Wis eerder gegenereerde barcode (optioneel)
+    Dim sh As Shape
+    For Each sh In ActiveDocument.Shapes
+        If Left(sh.Name, 8) = "Barcode_" Then sh.Delete
+    Next sh
+
+    ' Genereer binair patroon
+    Dim binString As String
+    binString = Code128B_Binarize(tekst)
+
+    ' Teken barcode in Word
+    Dim i As Long
+    Dim xPos As Single: xPos = 50
+    Dim yPos As Single: yPos = 100
+    Dim hoogte As Single: hoogte = 14
+    Dim breedte As Single: breedte = 1
+
+    For i = 1 To Len(binString)
+        If Mid(binString, i, 1) = "1" Then
+            Dim bar As Shape
+            Set bar = ActiveDocument.Shapes.AddShape(Type:=msoShapeRectangle, _
+                Left:=xPos, Top:=yPos, Width:=breedte, Height:=hoogte)
+            With bar
+                .Fill.ForeColor.RGB = RGB(0, 0, 0)
+                .Line.Visible = msoFalse
+                .Name = "Barcode_" & i
+            End With
+        End If
+        xPos = xPos + breedte
+    Next i
+End Sub
+
+
+Function Code128B_Binarize(ByVal tekst As String) As String
+    Dim startCode As Integer: startCode = 104
+    Dim checksum As Integer: checksum = startCode
+    Dim i As Long
+    Dim codes() As Integer
+    ReDim codes(Len(tekst) - 1)
+
+    For i = 1 To Len(tekst)
+        codes(i - 1) = Asc(Mid(tekst, i, 1)) - 32
+        checksum = checksum + codes(i - 1) * i
+    Next i
+
+    checksum = checksum Mod 103
+
+    Dim fullCodes() As Integer
+    ReDim fullCodes(UBound(codes) + 3)
+    fullCodes(0) = 104
+    For i = 0 To UBound(codes)
+        fullCodes(i + 1) = codes(i)
+    Next i
+    fullCodes(UBound(codes) + 2) = checksum
+    fullCodes(UBound(codes) + 3) = 106
+
+    Dim pattern As String
+    Dim binaryString As String: binaryString = ""
+    For i = 0 To UBound(fullCodes)
+        pattern = Code128_Patronen(fullCodes(i))
+        binaryString = binaryString & pattern
+    Next i
+
+    Code128B_Binarize = String(10, "0") & binaryString & String(10, "0")
+End Function
+
+Function Code128_Patronen(index As Integer) As String
+    Dim patronen As Variant
+    patronen = Array( _
+        "11011001100", "11001101100", "11001100110", "10010011000", "10010001100", _
+        "10001001100", "10011001000", "10011000100", "10001100100", "11001001000", _
+        "11001000100", "11000100100", "10110011100", "10011011100", "10011001110", _
+        "10111001100", "10011101100", "10011100110", "11001110010", "11001011100", _
+        "11001001110", "11011100100", "11001110100", "11101101110", "11101001100", _
+        "11100101100", "11100100110", "11101100100", "11100110100", "11100110010", _
+        "11011011000", "11011000110", "11000110110", "10100011000", "10001011000", _
+        "10001000110", "10110001000", "10001101000", "10001100010", "11010001000", _
+        "11000101000", "11000100010", "10110111000", "10110001110", "10001101110", _
+        "10111011000", "10111000110", "10001110110", "11101110110", "11010001110", _
+        "11000101110", "11011101000", "11011100010", "11011101110", "11101011000", _
+        "11101000110", "11100010110", "11101101000", "11101100010", "11100011010", _
+        "11101111010", "11001000010", "11110001010", "10100110000", "10100001100", _
+        "10010110000", "10010000110", "10000101100", "10000100110", "10110010000", _
+        "10110000100", "10011010000", "10011000010", "10000110100", "10000110010", _
+        "11000010010", "11001010000", "11110111010", "11000010100", "10001111010", _
+        "10100111100", "10010111100", "10010011110", "10111100100", "10011110100", _
+        "10011110010", "11110100100", "11110010100", "11110010010", "11011011110", _
+        "11011110110", "11110110110", "10101111000", "10100011110", "10001011110", _
+        "10111101000", "10111100010", "11110101000", "11110100010", "10111011110", _
+        "10111101110", "11101011110", "11110101110", "11010000100", "11010010000", _
+        "11010011100", "1100011101011")
+    Code128_Patronen = patronen(index)
+End Function
+
+
